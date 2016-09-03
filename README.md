@@ -16,6 +16,10 @@ Color
 
 Smooth ( the color temperature/brightness will be changed to target value in a gradual fashion)
 
+
+
 Api Docs : http://www.yeelight.com/download/Yeelight_Inter-Operation_Spec.pdf
+
+
 
 Used MahApps.Metro theme and Extended WPF Toolkit for the ColorCanvas
