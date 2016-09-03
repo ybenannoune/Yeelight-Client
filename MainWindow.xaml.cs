@@ -25,23 +25,30 @@ namespace YeelightController
     /// 
     public partial class MainWindow : MetroWindow
     {
+        //List of all discovered bulbs
         private List<Bulb> m_Bulbs = new List<Bulb>();
+        //The connected Bulb, null if no connected
         private Bulb m_ConnectedBulb;
+        //TcpClient used to communicate with the Bulb
         private TcpClient m_TcpClient;
-        private IPAddress m_MultiCastAddress = IPAddress.Parse("239.255.255.250");
-        private int m_Port = 1982;
+        //MultiCastAddress
+        private IPAddress m_MultiCastAddress = IPAddress.Parse("239.255.255.250");    
+        //Udp port used during the ssdp discovers
+        private int m_Port = 1982;    
 
         public MainWindow()
         {
             InitializeComponent();
 
+            //Bind the list to the ListView
             lstBulbs.ItemsSource = m_Bulbs;
 
+            //Search bulbs once at running time
             DiscoverBulbs();                 
         }
 
         /// <summary>
-        /// Fonction to get a sub part of a string, exemple : startexempleend, by using "str" as begin param and "end as end param, you receive "exemple"
+        /// Function to get a sub part of a string, exemple : startexempleend, by using "str" as begin param and "end as end param, you receive "exemple"
         /// Return false if no match
         /// </summary>
         /// <param name="str"></param>
@@ -67,50 +74,56 @@ namespace YeelightController
 
 
         /// <summary>
-        /// Fonction async to discovers all buls in the network, and add in the main listbox
+        /// Function asynchrone to discovers all buls in the network
+        /// Discovered bulbs are added to the list on the MainWindow
         /// </summary>
         private async void DiscoverBulbs()
-        {
-            UdpClient client = new UdpClient();
-
-            //ssdp searching message 
-            string data = "M-SEARCH * HTTP/1.1\r\n" +
-                      "HOST: 239.255.255.250:1982\r\n" +
-                      "MAN: \"ssdp:discover\"\r\n" +
-                      "ST: wifi_bulb";
+        {     
+            UdpClient client = new UdpClient();           
 
             //convert to byte array
-            Byte[] sendBytes = Encoding.ASCII.GetBytes(data);
+            byte[] dgram = Encoding.ASCII.GetBytes("M-SEARCH * HTTP/1.1\r\n" +
+                      "HOST: 239.255.255.250:1982\r\n" +
+                      "MAN: \"ssdp:discover\"\r\n" +
+                      "ST: wifi_bulb");
 
             //Remote endpoint "239.255.255.250:1982"
             IPEndPoint remoteEndPoint = new IPEndPoint(m_MultiCastAddress, m_Port);
+
             //Join multicastgroup
             client.JoinMulticastGroup(m_MultiCastAddress);
-            client.Send(sendBytes, sendBytes.Length, remoteEndPoint);
-            //After 1000 ms timeout
+
+            //Send the message
+            client.Send(dgram, dgram.Length, remoteEndPoint);
+
+            //After 1000 ms timeout we stop research
             client.Client.ReceiveTimeout = 1000;
 
-            IPEndPoint RemoteIpEndPoint = new IPEndPoint(IPAddress.Any, 0);            
+            IPEndPoint RemoteIpEndPoint = new IPEndPoint(IPAddress.Any, 0);   
+            
+                     
             await Task.Run(() =>
             {
                 try
                 {
                     while (true)
                     {             
-                        Byte[] receiveBytes = client.Receive(ref RemoteIpEndPoint);
+                        byte[] receiveBytes = client.Receive(ref RemoteIpEndPoint);
                         string message = Encoding.ASCII.GetString(receiveBytes);
                                      
                         string ip = "";
                         GetSubString(message, "Location: yeelight://", ":", ref ip);
 
-                        //if list already contains this bulb, then skip
-                        bool containsItem = m_Bulbs.Any(item => item.Ip == ip);
-                        if (containsItem == false)
+                        //if list already contains this bulb skip
+                        bool alreadyExisting = m_Bulbs.Any(item => item.Ip == ip);
+                        if (alreadyExisting == false)
                         {
                             string id = "";
                             GetSubString(message, "id: ", "\r\n", ref id);
+
                             string bright = "";
                             GetSubString(message, "bright: ", "\r\n", ref bright);
+
                             string power = "";
                             GetSubString(message, "power: ", "\r\n", ref power);
                             bool isOn = power.Contains("on");
@@ -140,6 +153,7 @@ namespace YeelightController
             
             m_TcpClient = new TcpClient();            
             m_TcpClient.Connect(bulb.getEndPoint());
+
             if(!m_TcpClient.Connected)
             {
                 panelBulbControl.IsEnabled = false;
@@ -147,13 +161,14 @@ namespace YeelightController
             }
             else
             {
+                //Save the connected bulb for easiest access
                 m_ConnectedBulb = bulb;        
 
-                //Apply current bulb to controls
+                //Apply current bulb values to controls
                 btnToggle.IsChecked = bulb.State;
                 sliderBrightness.Value = bulb.Brightness;
 
-                //Change state
+                //Change panel state -> allow modification
                 panelBulbControl.IsEnabled = true;
             }
         }              
@@ -166,8 +181,8 @@ namespace YeelightController
                 cmd_str.Append("{\"id\":");
                 cmd_str.Append(m_ConnectedBulb.Id);
                 cmd_str.Append(",\"method\":\"toggle\",\"params\":[]}\r\n");
-                byte[] data = Encoding.ASCII.GetBytes(cmd_str.ToString());
-                Console.WriteLine(cmd_str.ToString());
+
+                byte[] data = Encoding.ASCII.GetBytes(cmd_str.ToString());  
                 m_TcpClient.Client.Send(data);
 
                 //Toggle
@@ -175,6 +190,7 @@ namespace YeelightController
             }
         }
 
+        //LostCapture event is used, we don't want to spam the bulb at each change, just the final one
         private void sliderBrightness_LostMouseCapture(object sender, MouseEventArgs e)
         {
             if (panelBulbControl.IsEnabled)
@@ -190,7 +206,6 @@ namespace YeelightController
                 cmd_str.Append(", \"smooth\", " + smooth + "]}\r\n");
 
                 byte[] data = Encoding.ASCII.GetBytes(cmd_str.ToString());
-                Console.WriteLine(cmd_str.ToString());
                 m_TcpClient.Client.Send(data);
 
                 //Apply Value
@@ -198,10 +213,12 @@ namespace YeelightController
             }
         }
 
+        //LostCapture event is used, we don't want to spam the bulb at each change, just the final one
         private void ColorCanvas_LostMouseCapture(object sender, MouseEventArgs e)
         {
             if (panelBulbControl.IsEnabled)
             {
+                //Convert color to integer without alpha
                 int value = ((colorCanvas.R) << 16) | ((colorCanvas.G) << 8) | (colorCanvas.B);       
                 int smooth = Convert.ToInt32(sliderSmooth.Value);
 

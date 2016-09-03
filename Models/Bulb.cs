@@ -9,24 +9,38 @@ namespace YeelightController
 {
     class Bulb : INotifyPropertyChanged
     {
-        public static int port = 55443;
-        private string m_Ip;
-        private string m_Id;
-        private bool m_State;
-        private int m_Bright;
+        //Default port
+        private static int port = 55443;
 
-        public Bulb(string ip,string id)
-        {
-            m_Id = id;
-            m_Ip = ip;
-        }
+
+        /// <summary>
+        /// Bulb Ip
+        /// </summary>
+        private string m_Ip;
+
+        /// <summary>
+        /// Bulb Id used for send command
+        /// </summary>
+        private string m_Id;
+
+
+        /// <summary>
+        /// Correspond to the state of the lamp : On/Off
+        /// </summary>
+        private bool m_State;
+
+
+        /// <summary>
+        /// Brightness of the bulb
+        /// </summary>
+        private int m_Brightness;
 
         public Bulb(string ip, string id, bool state, int bright)
         {
             m_Id = id;
             m_Ip = ip;
             m_State = state;
-            m_Bright = bright;
+            m_Brightness = bright;
         }
 
         public string Ip
@@ -48,10 +62,10 @@ namespace YeelightController
         
         public int Brightness
         {
-            get { return m_Bright; }
+            get { return m_Brightness; }
             set
             {
-                m_Bright = value;
+                m_Brightness = value;
                 OnPropertyChanged();
             }
         }

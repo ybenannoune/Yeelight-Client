@@ -18,10 +18,13 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <ListView Name="lstBulbs" Grid.Row="0" Grid.ColumnSpan="2" 
-                          Margin="10"
-                          BorderThickness="1"     
-                          Style="{StaticResource VirtualisedMetroListView}" SelectionChanged="lstBulbs_SelectionChanged">
+        <ListView Name="lstBulbs" 
+                  Grid.Row="0" 
+                  Grid.ColumnSpan="2" 
+                  Margin="10"
+                  BorderThickness="1"     
+                  Style="{StaticResource VirtualisedMetroListView}" SelectionChanged="lstBulbs_SelectionChanged">
+            
             <ListView.View>
                 <GridView>
                     <GridViewColumn DisplayMemberBinding="{Binding Ip}" Header="Bulb Ip" />
@@ -35,23 +38,24 @@
         <StackPanel Name="panelBulbControl" Grid.Row="2" IsEnabled="false">
 
             <Controls:ToggleSwitch Margin="20, 0, 15, 0" Name="btnToggle" Header="Bulb State" OnLabel="Yes" OffLabel="No" IsCheckedChanged="btnToggle_IsCheckedChanged"  />
-            
-            <TextBlock Margin="10, 0, 0, 0">Brightness:</TextBlock>
+
+            <TextBlock Margin="10, 0, 0, 0" Text="Brightness:"/>
             <Slider Name="sliderBrightness"
                     Width="200"
                     Style="{DynamicResource FlatSlider}"
                     Margin="10, 10, 0, 0"
                     IsEnabled="true" LostMouseCapture="sliderBrightness_LostMouseCapture" />
 
-            <TextBlock  Margin="10, 0, 0, 0">Smooth:</TextBlock>
+            <TextBlock  Margin="10, 0, 0, 0" Text="Smooth:"/>
             <Slider Name="sliderSmooth"
                     Width="200"
                     Style="{DynamicResource FlatSlider}"
                     Margin="10, 10, 0, 0"
-                    IsEnabled="true" Maximum="1000" Value="500" />            
+                    IsEnabled="true" Maximum="1000" Value="500" />      
+            
         </StackPanel>
-      
-        
+              
         <xctk:ColorCanvas Name="colorCanvas" Grid.Row="1" Grid.Column="2" UsingAlphaChannel="False" LostMouseCapture="ColorCanvas_LostMouseCapture"/>
+        
     </Grid>
 </Controls:MetroWindow>
