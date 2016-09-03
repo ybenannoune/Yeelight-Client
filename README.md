@@ -8,13 +8,13 @@ Your bulbs need to be in developer mode !
 
 ![alt tag](http://image.noelshack.com/fichiers/2016/35/1472940119-preview.png)
 
-Availables controls :
+#Availables controls :
 
-Brightness
+* Brightness
 
-Color
+* Color
 
-Smooth ( the color temperature/brightness will be changed to target value in a gradual fashion)
+* Smooth ( the color temperature/brightness will be changed to target value in a gradual fashion)
 
 
 
