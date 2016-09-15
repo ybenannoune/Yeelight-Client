@@ -6,8 +6,8 @@
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns:local="clr-namespace:YeelightController"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-        mc:Ignorable="d"
-        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="500" Width="500" ResizeMode="NoResize">
+        mc:Ignorable="d"   
+        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="500" Width="500" ResizeMode="NoResize" Icon="icon.ico">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30*"/>
