@@ -13,6 +13,7 @@ using System.Diagnostics.Contracts;
 
 // SSDP reference : https://searchcode.com/codesearch/view/8152089/ /DeviceFinder.SSDP.cs 
 // https://github.com/arktronic/ssdp-discover/blob/master/Program.cs
+// https://blogs.msdn.microsoft.com/andypennell/2011/08/24/attempting-upnp-on-windows-phone-7-5-mango-part-1-ssdp-discovery/
 
 namespace YeelightController
 {
@@ -37,14 +38,11 @@ namespace YeelightController
         private static readonly int m_Port = 1982;
 
         //MultiCastEndPoint 
-        private static readonly IPEndPoint MulticastEndPoint = new IPEndPoint(IPAddress.Parse("239.255.255.250"), m_Port);
-        private static readonly IPEndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);        
+        private static readonly IPEndPoint MulticastEndPoint = new IPEndPoint(IPAddress.Parse("239.255.255.250"), 1982);
+        private static readonly IPEndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
         //SSDP Diagram Message
-        private static readonly string ssdpMessage = "M-SEARCH * HTTP/1.1\r\n" +
-                                                     "HOST: 239.255.255.250:1982\r\n" +
-                                                     "MAN: \"ssdp:discover\"\r\n" +
-                                                     "ST: wifi_bulb";
+        private static readonly string ssdpMessage = "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1982\r\nMAN: \"ssdp:discover\"\r\nST: wifi_bulb";
 
         private static readonly byte[] dgram = Encoding.ASCII.GetBytes(ssdpMessage);
 
@@ -53,10 +51,15 @@ namespace YeelightController
             InitializeComponent();
 
             //Bind the list to the ListView
-            lstBulbs.ItemsSource = m_Bulbs;
+            lstBulbs.ItemsSource = m_Bulbs;         
+        }
 
+        private void MetroWindow_Loaded(object sender, System.Windows.RoutedEventArgs e)
+        {
             //Search bulbs once at running time
-            StartListening();                 
+            StartListening();
+
+            _ssdpSocket.SendTo(dgram, dgram.Length, SocketFlags.None, MulticastEndPoint);
         }
 
         /// <summary>
@@ -83,10 +86,11 @@ namespace YeelightController
             }
             return false;
         }
-          
+
 
         #region HandleResponse
 
+      
         private void HandleResponse(EndPoint sender, string response)
         {
             Contract.Requires(sender != null);
@@ -95,24 +99,28 @@ namespace YeelightController
             string ip = "";
             GetSubString(response, "Location: yeelight://", ":", ref ip);
 
-            //if list already contains this bulb skip
-            bool alreadyExisting = m_Bulbs.Any(item => item.Ip == ip);
-            if (alreadyExisting == false)
+            lock(m_Bulbs)
             {
-                string id = "";
-                GetSubString(response, "id: ", "\r\n", ref id);
+                //if list already contains this bulb skip
+                bool alreadyExisting = m_Bulbs.Any(item => item.Ip == ip);
+                if (alreadyExisting == false)
+                {
+                    string id = "";
+                    GetSubString(response, "id: ", "\r\n", ref id);
 
-                string bright = "";
-                GetSubString(response, "bright: ", "\r\n", ref bright);
+                    string bright = "";
+                    GetSubString(response, "bright: ", "\r\n", ref bright);
 
-                string power = "";
-                GetSubString(response, "power: ", "\r\n", ref power);
-                bool isOn = power.Contains("on");
+                    string power = "";
+                    GetSubString(response, "power: ", "\r\n", ref power);
+                    bool isOn = power.Contains("on");
 
-                m_Bulbs.Add(new Bulb(ip, id, isOn, Convert.ToInt32(bright)));
-            }
+                    m_Bulbs.Add(new Bulb(ip, id, isOn, Convert.ToInt32(bright)));
+                }
+            }      
         }
-             
+            
+
         private void ReceiveResponseRecursive(IAsyncResult r = null)
         {
             Contract.Requires(r == null || _ssdpReceiveBuffer != null);
@@ -141,7 +149,7 @@ namespace YeelightController
             // trigger the next cycle
             // tail recursion
             EndPoint recvEndPoint = AnyEndPoint;
-            _ssdpReceiveBuffer = new byte[4096];
+            _ssdpReceiveBuffer = new byte[10000];
 
             _ssdpSocket.BeginReceiveFrom(
                 _ssdpReceiveBuffer,
@@ -151,17 +159,30 @@ namespace YeelightController
                 ref recvEndPoint,
                 ReceiveResponseRecursive,
                 null
-            );
+                );
         }
 
         #endregion
+
+        public static IPAddress GetLocalIPAddress()
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    return ip;
+                }
+            }
+            throw new Exception("Local IP Address Not Found!");
+        }
 
         /// <summary>
         /// Function asynchrone to discovers all buls in the network
         /// Discovered bulbs are added to the list on the MainWindow
         /// </summary>
         private void StartListening()
-        {         
+        {     
             // create socket
             _ssdpSocket = new Socket(
                     AddressFamily.InterNetwork,
@@ -173,10 +194,10 @@ namespace YeelightController
                 Ttl = 1,
                 UseOnlyOverlappedIO = true,
                 MulticastLoopback = false,
-            };
+            };  
 
-            _ssdpSocket.Bind(AnyEndPoint);
-
+            _ssdpSocket.Bind(new IPEndPoint(GetLocalIPAddress(), 0));
+                       
             _ssdpSocket.SetSocketOption(
               SocketOptionLevel.IP,
               SocketOptionName.AddMembership,
@@ -184,11 +205,9 @@ namespace YeelightController
             );      
 
             // start listening
-            ReceiveResponseRecursive();
-
-            _ssdpSocket.SendTo(dgram, MulticastEndPoint);   
+            ReceiveResponseRecursive();         
         }
-     
+
         private void lstBulbs_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (m_TcpClient != null)
@@ -275,10 +294,11 @@ namespace YeelightController
                 cmd_str.Append(value);
                 cmd_str.Append(", \"smooth\", " + smooth + "]}\r\n");
 
-                byte[] data = Encoding.ASCII.GetBytes(cmd_str.ToString());
-                Console.WriteLine(cmd_str.ToString());
+                byte[] data = Encoding.ASCII.GetBytes(cmd_str.ToString());               
                 m_TcpClient.Client.Send(data);               
             }
         }
+
+   
     }
 }

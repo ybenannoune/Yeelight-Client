@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:YeelightController"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"   
-        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="500" Width="500" ResizeMode="NoResize" Icon="icon.ico">
+        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="500" Width="500" ResizeMode="NoResize" Icon="icon.ico" Loaded="MetroWindow_Loaded">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30*"/>
@@ -44,7 +44,7 @@
                     Width="200"
                     Style="{DynamicResource FlatSlider}"
                     Margin="10, 10, 0, 0"
-                    IsEnabled="true" LostMouseCapture="sliderBrightness_LostMouseCapture" />
+                    IsEnabled="true" LostMouseCapture="sliderBrightness_LostMouseCapture" Minimum="1" />
 
             <TextBlock  Margin="10, 0, 0, 0" Text="Smooth:"/>
             <Slider Name="sliderSmooth"
