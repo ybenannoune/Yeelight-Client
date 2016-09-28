@@ -38,6 +38,7 @@ namespace YeelightController
         private static readonly int m_Port = 1982;
 
         //MultiCastEndPoint 
+        private static readonly IPEndPoint LocalEndPoint = new IPEndPoint(GetLocalIPAddress(), 0);
         private static readonly IPEndPoint MulticastEndPoint = new IPEndPoint(IPAddress.Parse("239.255.255.250"), 1982);
         private static readonly IPEndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
@@ -51,17 +52,44 @@ namespace YeelightController
             InitializeComponent();
 
             //Bind the list to the ListView
-            lstBulbs.ItemsSource = m_Bulbs;         
-        }
+            lstBulbs.ItemsSource = m_Bulbs;
 
-        private void MetroWindow_Loaded(object sender, System.Windows.RoutedEventArgs e)
-        {
             //Search bulbs once at running time
             StartListening();
 
-            _ssdpSocket.SendTo(dgram, dgram.Length, SocketFlags.None, MulticastEndPoint);
-        }
+            // send message
+            for (int i = 0; i < 3; i++)
+            {
+                if (i > 0)
+                    Thread.Sleep(50);
 
+                var async = _ssdpSocket.BeginSendTo(
+                    dgram,
+                    0,
+                    dgram.Length,
+                    SocketFlags.None,
+                    MulticastEndPoint,
+                    o =>
+                    {
+                        var r = _ssdpSocket.EndSendTo(o);
+                        /*
+                        if (r != data.Length)
+                        {
+                            _log.WarnFormat(
+                                "Sent SSDP discovery request length mismatch: {0} != {1} (expected)",
+                                r,
+                                data.Length
+                                );
+                        }
+                        */
+                    },
+                    null
+                    );
+
+                async.AsyncWaitHandle.WaitOne();
+            }
+        }
+        
         /// <summary>
         /// Function to get a sub part of a string, exemple : startexempleend, by using "str" as begin param and "end as end param, you receive "exemple"
         /// Return false if no match
@@ -148,8 +176,8 @@ namespace YeelightController
 
             // trigger the next cycle
             // tail recursion
-            EndPoint recvEndPoint = AnyEndPoint;
-            _ssdpReceiveBuffer = new byte[10000];
+            EndPoint recvEndPoint = LocalEndPoint;
+            _ssdpReceiveBuffer = new byte[4096];
 
             _ssdpSocket.BeginReceiveFrom(
                 _ssdpReceiveBuffer,
