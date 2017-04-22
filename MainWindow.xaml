@@ -7,11 +7,11 @@
         xmlns:local="clr-namespace:YeelightController"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"   
-        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="500" Width="500" ResizeMode="NoResize" Icon="icon.ico">
+        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="600" Width="500" ResizeMode="NoResize" Icon="icon.ico">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="30*"/>
-            <RowDefinition Height="70*"/>
+            <RowDefinition Height="40*"/>
+            <RowDefinition Height="60*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>      
             <ColumnDefinition Width="*"/>
@@ -24,11 +24,20 @@
                   Margin="10"
                   BorderThickness="1"     
                   Style="{StaticResource VirtualisedMetroListView}" SelectionChanged="lstBulbs_SelectionChanged">
-            
+
+                     
             <ListView.View>
                 <GridView>
-                    <GridViewColumn DisplayMemberBinding="{Binding Ip}" Header="Bulb Ip" />
-                    <GridViewColumn DisplayMemberBinding="{Binding Id}" Header="Bulb Id" />
+                    
+                    <GridViewColumn Header="Model">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Image Source="{Binding ModelIcon}" Width="50" Height="60"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>                   
+                    
+                    <GridViewColumn DisplayMemberBinding="{Binding Ip}" Header="Ip" />                  
                     <GridViewColumn DisplayMemberBinding="{Binding State}" Header="State" />
                     <GridViewColumn DisplayMemberBinding="{Binding Brightness}" Header="Brightness" />
                 </GridView>

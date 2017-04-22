@@ -12,8 +12,6 @@ using MahApps.Metro.Controls;
 using System.Diagnostics.Contracts;
 
 // SSDP reference : https://searchcode.com/codesearch/view/8152089/ /DeviceFinder.SSDP.cs 
-// https://github.com/arktronic/ssdp-discover/blob/master/Program.cs
-// https://blogs.msdn.microsoft.com/andypennell/2011/08/24/attempting-upnp-on-windows-phone-7-5-mango-part-1-ssdp-discovery/
 
 namespace YeelightController
 {
@@ -24,9 +22,9 @@ namespace YeelightController
     public partial class MainWindow : MetroWindow
     {
         //List of all discovered bulbs
-        private List<Bulb> m_Bulbs = new List<Bulb>();
+        private List<Device> m_Bulbs = new List<Device>();
         //The connected Bulb, null if no connected
-        private Bulb m_ConnectedBulb;
+        private Device m_ConnectedBulb;
         //TcpClient used to communicate with the Bulb
         private TcpClient m_TcpClient;
 
@@ -47,16 +45,8 @@ namespace YeelightController
 
         private static readonly byte[] dgram = Encoding.ASCII.GetBytes(ssdpMessage);
 
-        public MainWindow()
+        public void SendDiscoveryMessage()
         {
-            InitializeComponent();
-
-            //Bind the list to the ListView
-            lstBulbs.ItemsSource = m_Bulbs;
-
-            //Search bulbs once at running time
-            StartListening();
-
             // send message
             for (int i = 0; i < 3; i++)
             {
@@ -72,16 +62,16 @@ namespace YeelightController
                     o =>
                     {
                         var r = _ssdpSocket.EndSendTo(o);
-                        /*
-                        if (r != data.Length)
+                        
+                        if (r != dgram.Length)
                         {
-                            _log.WarnFormat(
+                            Console.Write(
                                 "Sent SSDP discovery request length mismatch: {0} != {1} (expected)",
                                 r,
-                                data.Length
+                                dgram.Length
                                 );
                         }
-                        */
+                        
                     },
                     null
                     );
@@ -89,9 +79,23 @@ namespace YeelightController
                 async.AsyncWaitHandle.WaitOne();
             }
         }
+
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            //Bind the list to the ListView
+            lstBulbs.ItemsSource = m_Bulbs;
+
+            //Search bulbs once at running time
+            StartListening();
+
+            //Send message
+            SendDiscoveryMessage();
+        }
         
         /// <summary>
-        /// Function to get a sub part of a string, exemple : startexempleend, by using "str" as begin param and "end as end param, you receive "exemple"
+        /// Function to get a sub part of a string, exemple : startexempleend, by using "start" as begin param and "end" as end param, you receive "exemple"
         /// Return false if no match
         /// </summary>
         /// <param name="str"></param>
@@ -127,6 +131,8 @@ namespace YeelightController
             string ip = "";
             GetSubString(response, "Location: yeelight://", ":", ref ip);
 
+            Console.WriteLine(response);
+
             lock(m_Bulbs)
             {
                 //if list already contains this bulb skip
@@ -143,7 +149,10 @@ namespace YeelightController
                     GetSubString(response, "power: ", "\r\n", ref power);
                     bool isOn = power.Contains("on");
 
-                    m_Bulbs.Add(new Bulb(ip, id, isOn, Convert.ToInt32(bright)));
+                    string model = "";
+                    GetSubString(response, "model: ", "\r\n", ref model);
+
+                    m_Bulbs.Add(new Device(ip, id, isOn, Convert.ToInt32(bright), !model.Contains("color")));
                 }
             }      
         }
@@ -222,10 +231,12 @@ namespace YeelightController
                 Ttl = 1,
                 UseOnlyOverlappedIO = true,
                 MulticastLoopback = false,
-            };  
+            };
+
+            Console.WriteLine("Mon ip: "  + GetLocalIPAddress());
 
             _ssdpSocket.Bind(new IPEndPoint(GetLocalIPAddress(), 0));
-                       
+
             _ssdpSocket.SetSocketOption(
               SocketOptionLevel.IP,
               SocketOptionName.AddMembership,
@@ -241,14 +252,15 @@ namespace YeelightController
             if (m_TcpClient != null)
                 m_TcpClient.Close();
 
-            Bulb bulb = m_Bulbs[lstBulbs.SelectedIndex];
+            Device bulb = m_Bulbs[lstBulbs.SelectedIndex];
             
             m_TcpClient = new TcpClient();            
             m_TcpClient.Connect(bulb.getEndPoint());
 
-            if(!m_TcpClient.Connected)
-            {
-                panelBulbControl.IsEnabled = false;
+            panelBulbControl.IsEnabled = false;
+
+            if (!m_TcpClient.Connected)
+            {               
                 m_ConnectedBulb = null;
             }
             else
