@@ -10,10 +10,7 @@ namespace YeelightController
     class Device : INotifyPropertyChanged
     {
         //Default port
-        private static int port = 55443;
-
-        private static string icon_ledstrip = "/YeelightController;component/Ressources/ledstrip.png";
-        private static string icon_bulb = "/YeelightController;component/Ressources/bulb.jpg";
+        private static int port = 55443;             
 
         /// <summary>
         /// Bulb Ip
@@ -35,15 +32,18 @@ namespace YeelightController
         /// </summary>
         private int m_Brightness;
 
-        private bool m_IsBulb;
+        /// <summary>
+        /// Model of the device , ex: bulb / led stripe
+        /// </summary>
+        private string m_Model;
 
-        public Device(string ip, string id, bool state, int bright, bool isBulb)
+        public Device(string ip, string id, bool state, int bright, string model)
         {
             m_Id = id;
             m_Ip = ip;
             m_State = state;
             m_Brightness = bright;
-            m_IsBulb = isBulb;
+            m_Model = model;
         }
 
         public string Ip
@@ -84,11 +84,20 @@ namespace YeelightController
 
         public string ModelIcon
         {            
-            get {
-                if (m_IsBulb)
-                    return "/YeelightController;component/Ressources/ledstrip.png";
-                else return "/YeelightController;component/Ressources/bulb.jpg";
+            get
+            {
+                switch (m_Model)
+                {
+                    case "color":
+                        return "/YeelightController;component/Ressources/bulb.jpg";
+                  
+                    case "stripe":
+                        return "/YeelightController;component/Ressources/ledstripe.png";
+                     
+                    default:
+                        return null;                
                 }
+            }
         }
 
         public IPEndPoint getEndPoint()
