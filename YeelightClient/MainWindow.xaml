@@ -1,13 +1,13 @@
-﻿<Controls:MetroWindow  x:Class="YeelightController.MainWindow"
+﻿<Controls:MetroWindow  x:Class="YeelightClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-        xmlns:local="clr-namespace:YeelightController"
+        xmlns:local="clr-namespace:YeelightClient"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"   
-        Title="Yeelight Controller" BorderBrush="Black" BorderThickness="1" Height="600" Width="500" ResizeMode="NoResize" Icon="icon.ico">
+        Title="Yeelight Client" BorderBrush="Black" BorderThickness="1" Height="600" Width="500" ResizeMode="NoResize" Icon="icon.ico">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40*"/>

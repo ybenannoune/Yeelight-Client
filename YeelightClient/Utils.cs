@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
-namespace YeelightController
+namespace YeelightClient
 {
-    class Utils
+    internal class Utils
     {
         /// <summary>
         /// Function to get a sub part of a string, exemple : startexempleend, by using "start" as begin param and "end" as end param, you receive "exemple"
@@ -55,6 +52,7 @@ namespace YeelightController
                     }
                 }
             }
+
             throw new Exception("Local IP Address Not Found!");
         }
     }
