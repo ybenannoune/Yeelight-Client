@@ -1,135 +1,113 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Net;
 using System.Net.Sockets;
-using System.Diagnostics.Contracts;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 // SSDP reference : https://searchcode.com/codesearch/view/8152089/ /DeviceFinder.SSDP.cs 
 
-namespace YeelightController
+namespace YeelightClient
 {
-    class DevicesDiscovery
+    internal class DeviceScanner
     {
-        //List of all discovered bulbs
-        private List<Device> m_Bulbs;
-                
-        //Socket for SSDP 
-        private Socket _ssdpSocket;
-        private byte[] _ssdpReceiveBuffer;
+        private const int SsdpUdpPort = 1982;
+        private const string SsdpMessage = "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1982\r\nMAN: \"ssdp:discover\"\r\nST: wifi_bulb";
 
-        //Udp port used during the ssdp discovers
-        private static readonly int m_Port = 1982;
+        private static readonly byte[] ssdpDiagram = Encoding.ASCII.GetBytes(SsdpMessage);
 
         //MultiCastEndPoint 
         private static readonly IPEndPoint LocalEndPoint = new IPEndPoint(Utils.GetLocalIPAddress(), 0);
         private static readonly IPEndPoint MulticastEndPoint = new IPEndPoint(IPAddress.Parse("239.255.255.250"), 1982);
         private static readonly IPEndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
-        //SSDP Diagram Message
-        private static readonly string ssdpMessage = "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1982\r\nMAN: \"ssdp:discover\"\r\nST: wifi_bulb";
-        private static readonly byte[] dgram = Encoding.ASCII.GetBytes(ssdpMessage);
-        
-        public DevicesDiscovery()
+        //Socket for SSDP 
+        private Socket ssdpSocket;
+        private byte[] ssdpReceiveBuffer;
+
+        public DeviceScanner()
         {
-            m_Bulbs = new List<Device>();
+            this.DiscoveredDevices = new List<Device>();
         }
 
-        public List<Device> GetDiscoveredDevices()
-        {
-            return m_Bulbs;
-        }
+        public IList<Device> DiscoveredDevices { get; }
 
         public void SendDiscoveryMessage()
         {
-            // send message
             for (int i = 0; i < 3; i++)
             {
                 if (i > 0)
+                {
                     Thread.Sleep(50);
+                }
 
-                var async = _ssdpSocket.BeginSendTo(
-                    dgram,
+                var async = this.ssdpSocket.BeginSendTo(
+                    ssdpDiagram,
                     0,
-                    dgram.Length,
+                    ssdpDiagram.Length,
                     SocketFlags.None,
                     MulticastEndPoint,
                     o =>
                     {
-                        var r = _ssdpSocket.EndSendTo(o);
+                        var result = this.ssdpSocket.EndSendTo(o);
 
-                        if (r != dgram.Length)
+                        if (result != ssdpDiagram.Length)
                         {
-                            Console.Write(
-                                "Sent SSDP discovery request length mismatch: {0} != {1} (expected)",
-                                r,
-                                dgram.Length
-                                );
+                            Console.Write("Sent SSDP discovery request length mismatch: {0} != {1} (expected)", result, ssdpDiagram.Length);
                         }
 
                     },
-                    null
-                    );
+                    null);
+
                 async.AsyncWaitHandle.WaitOne();
             }
         }
 
-        private void ReceiveResponseRecursive(IAsyncResult r = null)
+        private void ReceiveResponseRecursive(IAsyncResult response = null)
         {
-            Contract.Requires(r == null || _ssdpReceiveBuffer != null);
-            Contract.Ensures(_ssdpReceiveBuffer != null);
+            Contract.Requires(response == null || this.ssdpReceiveBuffer != null);
+            Contract.Ensures(this.ssdpReceiveBuffer != null);
 
-            // check if there is an response
+            // check if there is a response
             // or this is the first call
-            if (r != null)
+            if (response != null)
             {
                 // complete read
                 EndPoint senderEndPoint = AnyEndPoint;
 
-                var read = _ssdpSocket.EndReceiveFrom(
-                    r,
-                    ref senderEndPoint
-                    );
+                var read = this.ssdpSocket.EndReceiveFrom(response, ref senderEndPoint);
 
-                // parse result
-                var resBuf = _ssdpReceiveBuffer;    // make sure we don't reuse the reference
+                // make sure we don't reuse the reference
+                var resBuf = this.ssdpReceiveBuffer;
 
-                new Task(
-                    () => HandleResponse(senderEndPoint, Encoding.ASCII.GetString(resBuf, 0, read))
-                    ).Start();
+                new Task(() => HandleResponse(senderEndPoint, Encoding.ASCII.GetString(resBuf, 0, read))).Start();
             }
 
             // trigger the next cycle
             // tail recursion
             EndPoint recvEndPoint = LocalEndPoint;
-            _ssdpReceiveBuffer = new byte[4096];
+            this.ssdpReceiveBuffer = new byte[4096];
 
-            _ssdpSocket.BeginReceiveFrom(
-                _ssdpReceiveBuffer,
+            this.ssdpSocket.BeginReceiveFrom(
+                this.ssdpReceiveBuffer,
                 0,
-                _ssdpReceiveBuffer.Length,
+                this.ssdpReceiveBuffer.Length,
                 SocketFlags.None,
                 ref recvEndPoint,
                 ReceiveResponseRecursive,
-                null
-                );
-        }    
-           
+                null);
+        }
+
         /// <summary>
         /// Function asynchrone to discovers all buls in the network
         /// Discovered bulbs are added to the list on the MainWindow
         /// </summary>
         public void StartListening()
         {
-            // create socket
-            _ssdpSocket = new Socket(
-                    AddressFamily.InterNetwork,
-                    SocketType.Dgram,
-                    ProtocolType.Udp
-                    )
+            this.ssdpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
             {
                 Blocking = false,
                 Ttl = 1,
@@ -141,13 +119,12 @@ namespace YeelightController
 
             Console.WriteLine("Mon ip: " + localIpAddress);
 
-            _ssdpSocket.Bind(new IPEndPoint(localIpAddress, 0));
+            this.ssdpSocket.Bind(new IPEndPoint(localIpAddress, 0));
 
-            _ssdpSocket.SetSocketOption(
+            this.ssdpSocket.SetSocketOption(
               SocketOptionLevel.IP,
               SocketOptionName.AddMembership,
-              new MulticastOption(MulticastEndPoint.Address)
-            );
+              new MulticastOption(MulticastEndPoint.Address));
 
             // start listening
             ReceiveResponseRecursive();
@@ -164,10 +141,10 @@ namespace YeelightController
 
             Console.WriteLine(response);
 
-            lock (m_Bulbs)
+            lock (DiscoveredDevices)
             {
                 //if list already contains this bulb skip
-                bool alreadyExisting = m_Bulbs.Any(item => item.Ip == ip);
+                bool alreadyExisting = DiscoveredDevices.Any(item => item.Ip == ip);
                 if (alreadyExisting == false)
                 {
                     string id = "";
@@ -183,7 +160,7 @@ namespace YeelightController
                     string model = "";
                     Utils.GetSubString(response, "model: ", "\r\n", ref model);
 
-                    m_Bulbs.Add(new Device(ip, id, isOn, Convert.ToInt32(bright), model));
+                    DiscoveredDevices.Add(new Device(ip, id, isOn, Convert.ToInt32(bright), model));
                 }
             }
         }
