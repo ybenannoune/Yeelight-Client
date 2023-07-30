@@ -1,4 +1,4 @@
-# YeelightController
+# Yeelight Client
 
 Application used to control a Xiaomi Yeelight Color Bulb : http://www.yeelight.com/en_US/product/wifi-led-c
 
